@@ -1,0 +1,41 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="external">
+      <UniqueIdentifier>{f49b2729-7d2e-4053-8360-b605c01790b2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="external\qdbmp">
+      <UniqueIdentifier>{81aebbb8-d257-47e4-b1a5-742214e39d54}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resources">
+      <UniqueIdentifier>{bce2ea67-06fc-4082-ba20-5baabb623d59}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resources\Images">
+      <UniqueIdentifier>{fe72dad7-ed94-431c-9d1c-5b49ef1269f5}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="kernel_sample.cu" />
+    <CudaCompile Include="main.cu" />
+    <CudaCompile Include="grid.cu" />
+    <CudaCompile Include="macros.h" />
+    <CudaCompile Include="cuda_functions.cu" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="qdbmp.h">
+      <Filter>external\qdbmp</Filter>
+    </ClInclude>
+    <ClInclude Include="grid.h" />
+    <ClInclude Include="cuda_functions.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="qdbmp.c">
+      <Filter>external\qdbmp</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="Resources\Images\console_gol.bmp">
+      <Filter>Resources\Images</Filter>
+    </Image>
+  </ItemGroup>
+</Project>

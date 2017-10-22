@@ -6,3 +6,4 @@
 *.fatbin
 /Debug
 /gupsla/Debug
+/.vs
