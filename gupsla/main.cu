@@ -54,13 +54,13 @@ int main()
 	Grid_Print(grid, false);
 
 	clear();
-	for(int i = 0; i < INT_MAX - 1; i++)
+	for(int i = 0; i < INT_MAX - 1 && !grid->Idle; i++)
 	{
 		gotoxy(0, 0);
 		Grid_Step(grid);
 		Grid_Download(grid);
 		Grid_Print(grid, false);
-		sleep(20);
+		//sleep(20);
 	}
 	// */
 

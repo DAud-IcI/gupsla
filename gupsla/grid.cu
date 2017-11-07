@@ -4,7 +4,13 @@
 #include <time.h>
 #include <math.h>
 #define CELLS_SIZE grid->Tables * grid->Rows * grid->Columns * sizeof(byte)
+#define BOOL_SIZE sizeof(bool)
+#define SetIdleTrue()  grid->Idle = true ; gpuOk(cudaMemcpy(grid->dev_Idle, &True , BOOL_SIZE, cudaMemcpyHostToDevice))
+#define SetIdleFalse() grid->Idle = false; gpuOk(cudaMemcpy(grid->dev_Idle, &False, BOOL_SIZE, cudaMemcpyHostToDevice))
+#define UpdateIdle()   gpuOk(cudaMemcpy(&(grid->Idle), grid->dev_Idle, BOOL_SIZE, cudaMemcpyDeviceToHost))
 
+bool False = false;
+bool True  = true;
 
 char grid_chars[255]{ '_', 'X' };
 
@@ -34,11 +40,13 @@ Grid * Grid_Create(int tables, int rows, int columns)
 		if (sh_width < block_width) block_width = sh_width;
 
 		threads = dim3(block_width, block_width, 1);
-		shared_memory_size = block_width * (block_width + 4) * sizeof(byte);
+		shared_memory_size = tables * (block_width + 2) * (block_width + 2) * sizeof(byte);
 	}
 	gpuOk(cudaMalloc(&(grid->dev_Cells), CELLS_SIZE));
 
-	grid->Step = &Grid_D_GoLStep;
+	grid->kernel_Step = &Grid_D_GoLStep;
+	gpuOk(cudaMalloc(&(grid->dev_Idle), BOOL_SIZE));
+	SetIdleFalse();
 
 	return grid;
 }
@@ -48,8 +56,10 @@ void Grid_Destroy(Grid ** grid_ptr)
 	Grid * grid = *grid_ptr;
 
 	free(grid->Cells);
-	cudaFree(grid->dev_Cells);
+	gpuOk(cudaFree(grid->dev_Cells));
 	free(grid);
+
+	gpuOk(cudaFree(grid->dev_Idle));
 
 	grid_ptr = NULL;
 }
@@ -111,14 +121,14 @@ void Grid_Step(Grid * grid)
 	printf("THREADS: %d x %d x %d\n", threads.x, threads.y, threads.z);
 	printf("SHARED : %g kB\n", ceil(shared_memory_size / 1024.0));
 	
-	grid->Step DEV3(blocks, threads, shared_memory_size) (grid->dev_Cells, grid_size);
+	SetIdleTrue();
+	grid->kernel_Step DEV3(blocks, threads, shared_memory_size) (grid->dev_Cells, grid->dev_Idle, grid_size);
+	UpdateIdle();
 }
 
-__global__ void Grid_D_GoLStep(byte * device_grid, dim3 size)
+__global__ void Grid_D_GoLStep(byte * device_grid, bool * device_idle, dim3 size)
 {
-	int neighbours = 0;
-	bool state = false;
-
+	#pragma region index generation
 	int x = threadIdx.x + blockIdx.x * blockDim.x;
 	int y = threadIdx.y + blockIdx.y * blockDim.y;
 	if (x >= size.x || y >= size.y)
@@ -127,34 +137,53 @@ __global__ void Grid_D_GoLStep(byte * device_grid, dim3 size)
 		return;
 	}
 
-	int i = XYW(x, y, size.x);
+	int global = XYW(x, y, size.x);
+	int blocki = XYW(blockIdx.x, blockIdx.y, blockDim.x);
+	int shardi = blocki + blockDim.x + 1;
+	#pragma endregion
 
-	state = device_grid[i] == 1;
+	#pragma region allocate shared memory
+	extern __shared__ byte sha_block[];
+	sha_block[shardi] = device_grid[global];
+
+	
+	syncthreads();
+	#pragma endregion
+
+	int neighbours = 0;
+	bool state = false;
+
+
+	state = device_grid[global] == 1;
 	bool space_up = threadIdx.y > 0;
 	bool space_down = threadIdx.y < size.y - 1;
 
 	if (threadIdx.x > 0)
 	{
-		if (space_up) neighbours += device_grid[i - 1 - size.x];
-		neighbours += device_grid[i - 1];
-		if (space_down) neighbours += device_grid[i - 1 + size.x];
+		if (space_up) neighbours += device_grid[global - 1 - size.x];
+		neighbours += device_grid[global - 1];
+		if (space_down) neighbours += device_grid[global - 1 + size.x];
 	}
 
 	// if (true)
 	{
-		if (space_up) neighbours += device_grid[i - size.x];
-		if (space_down) neighbours += device_grid[i + size.x];
+		if (space_up) neighbours += device_grid[global - size.x];
+		if (space_down) neighbours += device_grid[global + size.x];
 	}
 
 	if (threadIdx.x < size.x)
 	{
-		if (space_up) neighbours += device_grid[i + 1 - size.x];
-		neighbours += device_grid[i + 1];
-		if (space_down) neighbours += device_grid[i + 1 + size.x];
+		if (space_up) neighbours += device_grid[global + 1 - size.x];
+		neighbours += device_grid[global + 1];
+		if (space_down) neighbours += device_grid[global + 1 + size.x];
 	}
 
 	syncthreads();
-
-	device_grid[i] = neighbours == 3 || (state && neighbours == 2);
+	byte value = neighbours == 3 || (state && neighbours == 2);
+	if (device_grid[global] != value)
+	{
+		device_grid[global] = value;
+		*device_idle = false;
+	}
 
 }
