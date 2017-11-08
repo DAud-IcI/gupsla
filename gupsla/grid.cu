@@ -126,7 +126,9 @@ void Grid_Step(Grid * grid)
 	UpdateIdle();
 }
 
-__global__ void Grid_D_GoLStep(byte * device_grid, bool * device_idle, dim3 size)
+#define GLOXY(X, Y) XYW(X, Y, size.x)
+#define SHAXY(X, Y) XYW(X, Y, shared_size.x)
+__global__ void Grid_D_GoLStep(byte * dev_grid, bool * device_idle, dim3 size)
 {
 	#pragma region index generation
 	int x = threadIdx.x + blockIdx.x * blockDim.x;
@@ -137,53 +139,73 @@ __global__ void Grid_D_GoLStep(byte * device_grid, bool * device_idle, dim3 size
 		return;
 	}
 
-	int global = XYW(x, y, size.x);
-	int blocki = XYW(blockIdx.x, blockIdx.y, blockDim.x);
-	int shardi = blocki + blockDim.x + 1;
+	dim3 shared_size = dim3(blockDim.x + 2, blockDim.y + 2, size.z);
+
+	int global_idx = GLOXY(x, y);
+	int shared_idx = SHAXY(threadIdx.x + 1, threadIdx.y + 1);
 	#pragma endregion
 
 	#pragma region allocate shared memory
 	extern __shared__ byte sha_block[];
-	sha_block[shardi] = device_grid[global];
-
+	sha_block[shared_idx] = dev_grid[global_idx];
 	
+	if (threadIdx.x == 0)
+	{
+		if (threadIdx.y == 0)
+			sha_block[0] = x > 0 && y > 0 ? dev_grid[GLOXY(x - 1, y - 1)] : 0;
+		sha_block[SHAXY(0, threadIdx.y + 1)] = x > 0 ? dev_grid[GLOXY(x - 1, y)] : 0;
+	}
+	
+	if (threadIdx.y == 0)
+	{
+		if (threadIdx.x == blockDim.x - 1)
+			sha_block[SHAXY(shared_size.x - 1, 0)] = x < size.x - 1 && y > 0 ? dev_grid[GLOXY(x + 1, y - 1)] : 0;
+		sha_block[SHAXY(threadIdx.x + 1, 0)] = y > 0 ? dev_grid[GLOXY(x, y - 1)] : 0;
+	}
+	
+	if (threadIdx.x == blockDim.x - 1)
+	{
+		if (threadIdx.y == blockDim.y - 1)
+			sha_block[SHAXY(shared_size.x - 1, shared_size.y - 1)] = x < size.x - 1 && y < size.y - 1 ? dev_grid[GLOXY(x + 1, y + 1)] : 0;
+		sha_block[SHAXY(shared_size.x - 1, threadIdx.y + 1)] = x < size.x - 1 ? dev_grid[GLOXY(x + 1, y)] : 0;
+	}
+
+	if (threadIdx.y == blockDim.y - 1)
+	{
+		if (threadIdx.x == 0)
+			sha_block[SHAXY(0, shared_size.y - 1)] = x > 0 && y < size.y - 1 ? dev_grid[GLOXY(x - 1, y + 1)] : 0;
+		sha_block[SHAXY(threadIdx.x + 1, shared_size.y - 1)] = y < size.y - 1 ? dev_grid[GLOXY(x, y + 1)] : 0;
+	}
+	#pragma endregion
 	syncthreads();
+
+	#pragma region calculate neighbours
+	int neighbours = 0;
+	bool state = sha_block[shared_idx] == 1;
+
+
+	neighbours += sha_block[shared_idx - 1 - shared_size.x];
+	neighbours += sha_block[shared_idx - 1];
+	neighbours += sha_block[shared_idx - 1 + shared_size.x];
+
+	neighbours += sha_block[shared_idx - shared_size.x];
+	
+	neighbours += sha_block[shared_idx + shared_size.x];
+
+	neighbours += sha_block[shared_idx + 1 - shared_size.x];
+	neighbours += sha_block[shared_idx + 1];
+	neighbours += sha_block[shared_idx + 1 + shared_size.x];
 	#pragma endregion
 
-	int neighbours = 0;
-	bool state = false;
-
-
-	state = device_grid[global] == 1;
-	bool space_up = threadIdx.y > 0;
-	bool space_down = threadIdx.y < size.y - 1;
-
-	if (threadIdx.x > 0)
-	{
-		if (space_up) neighbours += device_grid[global - 1 - size.x];
-		neighbours += device_grid[global - 1];
-		if (space_down) neighbours += device_grid[global - 1 + size.x];
-	}
-
-	// if (true)
-	{
-		if (space_up) neighbours += device_grid[global - size.x];
-		if (space_down) neighbours += device_grid[global + size.x];
-	}
-
-	if (threadIdx.x < size.x)
-	{
-		if (space_up) neighbours += device_grid[global + 1 - size.x];
-		neighbours += device_grid[global + 1];
-		if (space_down) neighbours += device_grid[global + 1 + size.x];
-	}
-
 	syncthreads();
+
+	#pragma region write result
 	byte value = neighbours == 3 || (state && neighbours == 2);
-	if (device_grid[global] != value)
+	if (dev_grid[global_idx] != value)
 	{
-		device_grid[global] = value;
+		dev_grid[global_idx] = value;
 		*device_idle = false;
 	}
-
+	#pragma endregion
+	//*device_idle = false;
 }

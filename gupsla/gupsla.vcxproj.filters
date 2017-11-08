@@ -38,4 +38,7 @@
       <Filter>Resources\Images</Filter>
     </Image>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
 </Project>

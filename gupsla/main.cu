@@ -2,6 +2,9 @@
 #include <math.h>
 #include <Windows.h>
 
+#include <glew.h>
+#include <GL/glut.h>
+
 #include "macros.h"
 #include "grid.h"
 #include "qdbmp.h"
@@ -61,6 +64,7 @@ int main()
 		Grid_Download(grid);
 		Grid_Print(grid, false);
 		//sleep(20);
+		//getchar();
 	}
 	// */
 
