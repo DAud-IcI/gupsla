@@ -2,9 +2,6 @@
 #include <math.h>
 #include <Windows.h>
 
-#include <glew.h>
-#include <GL/glut.h>
-
 #include "macros.h"
 #include "grid.h"
 #include "qdbmp.h"
