@@ -1,7 +1,7 @@
 #pragma once
 #include "macros.h"
 
-typedef void (*GridKernel)(byte*, bool*, dim3); // __global__ void kernel(byte * dev_grid, bool * device_idle, dim3 size)
+typedef void (*GridKernel)(byte*, bool*, unsigned int, unsigned int, unsigned int); // __global__ void kernel(byte * dev_grid, bool * device_idle, unsigned int size_x, unsigned int size_y, unsigned int size_z)
 
 struct Grid
 {
@@ -24,6 +24,10 @@ void Grid_Randomize(Grid * grid);
 void Grid_Print(Grid * grid, bool draw_outline = true);
 void Grid_Upload(Grid * grid);
 void Grid_Download(Grid * grid);
-void Grid_Step(Grid * grid);
-
-__global__ void Grid_D_GoLStep(byte * dev_grid, bool * device_idle, dim3 size);
+void Grid_Step(Grid * grid
+#if _DEBUG
+	, bool print = true
+#else
+	, bool print = false
+#endif
+);

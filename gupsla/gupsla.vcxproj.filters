@@ -15,23 +15,17 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <CudaCompile Include="kernel_sample.cu" />
     <CudaCompile Include="main.cu" />
     <CudaCompile Include="grid.cu" />
     <CudaCompile Include="macros.h" />
     <CudaCompile Include="cuda_functions.cu" />
+    <CudaCompile Include="tools.cu" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="qdbmp.h">
-      <Filter>external\qdbmp</Filter>
-    </ClInclude>
     <ClInclude Include="grid.h" />
     <ClInclude Include="cuda_functions.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="qdbmp.c">
-      <Filter>external\qdbmp</Filter>
-    </ClCompile>
+    <ClInclude Include="macros_cuda.h" />
+    <ClInclude Include="tools.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="Resources\Images\console_gol.bmp">
