@@ -152,17 +152,16 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <CudaCompile Include="cuda_functions.cu" />
+    <CudaCompile Include="cuda_ext.cu" />
     <CudaCompile Include="grid.cu" />
     <CudaCompile Include="macros.h" />
     <CudaCompile Include="main.cu" />
     <CudaCompile Include="tools.cu" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="cuda_functions.h" />
+    <ClInclude Include="cuda_ext.cuh" />
     <ClInclude Include="grid.cuh" />
     <ClInclude Include="grid.h" />
-    <ClInclude Include="macros_cuda.h" />
     <ClInclude Include="tools.h" />
   </ItemGroup>
   <ItemGroup>

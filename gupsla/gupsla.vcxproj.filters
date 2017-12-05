@@ -18,15 +18,14 @@
     <CudaCompile Include="main.cu" />
     <CudaCompile Include="grid.cu" />
     <CudaCompile Include="macros.h" />
-    <CudaCompile Include="cuda_functions.cu" />
     <CudaCompile Include="tools.cu" />
+    <CudaCompile Include="cuda_ext.cu" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="grid.h" />
-    <ClInclude Include="cuda_functions.h" />
-    <ClInclude Include="macros_cuda.h" />
     <ClInclude Include="tools.h" />
     <ClInclude Include="grid.cuh" />
+    <ClInclude Include="cuda_ext.cuh" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="Resources\Images\console_gol.bmp">

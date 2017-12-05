@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <math.h>
 #include "macros.h"
-#include "macros_cuda.h"
+#include "cuda_ext.cuh"
 
 void PrintTest()
 {

@@ -2,7 +2,7 @@
 #include <Windows.h>
 
 #include "macros.h"
-#include "macros_cuda.h"
+#include "cuda_ext.cuh"
 #include "grid.h"
 #include "tools.h"
 

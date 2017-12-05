@@ -116,10 +116,10 @@ void Grid_Download(Grid * grid)
 	gpuOk(cudaMemcpy(grid->Cells, grid->dev_Cells, CELLS_SIZE, cudaMemcpyDeviceToHost));
 }
 
-#define devide_ceiling(a, b) (int)ceil((double)(a) / (b))
+#define devideCeiling(a, b) (int)ceil(((double)(a)) / (b))
 void Grid_Step(Grid * grid, bool print)
 {
-	dim3 blocks(devide_ceiling(grid->Columns, block_width), devide_ceiling(grid->Rows, block_width));
+	dim3 blocks(devideCeiling(grid->Columns, block_width), devideCeiling(grid->Rows, block_width));
 	//dim3 grid_size(grid->Columns, grid->Rows, grid->Tables);
 
 	if (print)
@@ -134,9 +134,6 @@ void Grid_Step(Grid * grid, bool print)
 	grid->kernel_Step DEV3(blocks, threads, shared_memory_size) (grid->dev_Cells, grid->dev_Idle, grid->Columns, grid->Rows, grid->Tables);
 	gpuOk(cudaMemcpy(&(grid->Idle), grid->dev_Idle, BOOL_SIZE, cudaMemcpyDeviceToHost)); // update idle
 }
-
-#define GLOXY(X, Y) XYW(X, Y, size_x)
-#define SHAXY(X, Y) XYW(X, Y, c->shared_size.x)
 
 __device__ __forceinline__ void Grid_D_InitCoordinates(byte * dev_grid, unsigned int size_x, unsigned int size_y, unsigned int size_z, Coordinates * c)
 {
@@ -153,42 +150,85 @@ __device__ __forceinline__ void Grid_D_InitCoordinates(byte * dev_grid, unsigned
 	c->shared_idx = SHAXY(threadIdx.x + 1, threadIdx.y + 1);
 }
 
-__device__ __forceinline__ void Grid_D_PrepareDevice(byte * dev_grid, unsigned int size_x, unsigned int size_y, unsigned int size_z, Coordinates * c)
+__device__ __forceinline__ void v(byte * dev_grid, unsigned int size_x, unsigned int size_y, unsigned int size_z, Coordinates * c)
 {
-	#pragma region 
 	extern __shared__ byte sha_block[];
 	sha_block[c->shared_idx] = dev_grid[c->global_idx];
 
+	
+
+	bool block_edge_left  = threadIdx.x == 0;
+	bool block_edge_right = threadIdx.x == (blockDim.x - 1);
+	bool block_edge_up    = threadIdx.y == 0;
+	bool block_edge_down  = threadIdx.y == (blockDim.y - 1);
+
+	#define GLOBAL_EDGE_LEFT  c->x == 0
+	#define GLOBAL_EDGE_RIGHT c->x == (size_x - 1)
+
+	if (block_edge_left)
+		sha_block[SHA_WW(*c)] = GLOBAL_EDGE_LEFT ?
+			0 : dev_grid[GLO_WW(*c)];
+	else if (block_edge_right)
+		sha_block[SHA_EE(*c)] = GLOBAL_EDGE_RIGHT ?
+			0 : dev_grid[GLO_EE(*c)];
+	//*
+	if (block_edge_up)
+	{
+		bool global_edge_up = c->y == 0;
+
+		if (block_edge_left)
+			sha_block[SHA_NW(*c)] = (global_edge_up || GLOBAL_EDGE_LEFT) ?
+				0 : dev_grid[GLO_NW(*c)];
+		else if (block_edge_right)
+			sha_block[SHA_NE(*c)] = (global_edge_up || GLOBAL_EDGE_RIGHT) ?
+				0 : dev_grid[0];
+		
+		sha_block[SHA_NN(*c)] = global_edge_up ?
+			0 : dev_grid[GLO_NN(*c)];
+	}// */
+	//*
+	else if (block_edge_down)
+	{
+		bool global_edge_down = c->y == (size_y - 1);
+
+		if (block_edge_left)
+			sha_block[SHA_SW(*c)] = (global_edge_down || GLOBAL_EDGE_LEFT) ?
+			0 : dev_grid[GLO_SW(*c)];
+		else if (block_edge_right)
+			sha_block[SHA_SE(*c)] = (global_edge_down || GLOBAL_EDGE_RIGHT) ?
+			0 : dev_grid[GLO_SE(*c)];
+
+		sha_block[SHA_SS(*c)] = global_edge_down ?
+			0 : dev_grid[GLO_SS(*c)];
+	}// */
+
+	/*
 	if (threadIdx.x == 0)
 	{
-		if (threadIdx.y == 0)
-			sha_block[0] = c->x > 0 && c->y > 0 ? dev_grid[GLOXY(c->x - 1, c->y - 1)] : 0;
+		if (threadIdx.y == 0) sha_block[0] = c->x > 0 && c->y > 0 ? dev_grid[GLOXY(c->x - 1, c->y - 1)] : 0;
 		sha_block[SHAXY(0, threadIdx.y + 1)] = c->x > 0 ? dev_grid[GLOXY(c->x - 1, c->y)] : 0;
 	}
 
 	if (threadIdx.y == 0)
 	{
-		if (threadIdx.x == blockDim.x - 1)
-			sha_block[SHAXY(c->shared_size.x - 1, 0)] = c->x < size_x - 1 && c->y > 0 ? dev_grid[GLOXY(c->x + 1, c->y - 1)] : 0;
+		if (threadIdx.x == c->shared_size.x - 2) sha_block[SHAXY(c->shared_size.x - 1, 0)] = c->x < size_x - 1 && c->y > 0 ? dev_grid[GLOXY(c->x + 1, c->y - 1)] : 0;
 		sha_block[SHAXY(threadIdx.x + 1, 0)] = c->y > 0 ? dev_grid[GLOXY(c->x, c->y - 1)] : 0;
 	}
-
-	if (threadIdx.x == blockDim.x - 2)
+	
+	if (threadIdx.x == c->shared_size.x - 2)
 	{
-		if (threadIdx.y == blockDim.y - 1)
-			sha_block[SHAXY(c->shared_size.x - 1, c->shared_size.y - 1)] = c->x < size_x - 1 && c->y < size_y - 1 ? dev_grid[GLOXY(c->x + 1, c->y + 1)] : 0;
+		if (threadIdx.y == c->shared_size.y - 2) sha_block[SHAXY(c->shared_size.x - 2, c->shared_size.y - 2)] = c->x < size_x - 1 && c->y < size_y - 1 ? dev_grid[GLOXY(c->x + 1, c->y + 1)] : 0;
 		sha_block[SHAXY(c->shared_size.x - 1, threadIdx.y + 1)] = c->x < size_x - 1 ? dev_grid[GLOXY(c->x + 1, c->y)] : 0;
 	}
 
-	if (threadIdx.y == blockDim.y - 2)
+	if (threadIdx.y == c->shared_size.y - 2)
 	{
-		if (threadIdx.x == 0)
-			sha_block[SHAXY(0, c->shared_size.y - 1)] = c->x > 0 && c->y < size_y - 1 ? dev_grid[GLOXY(c->x - 1, c->y + 1)] : 0;
+		if (threadIdx.x == 0) sha_block[SHAXY(0, c->shared_size.y - 2)] = c->x > 0 && c->y < size_y - 1 ? dev_grid[GLOXY(c->x - 1, c->y + 1)] : 0;
 		sha_block[SHAXY(threadIdx.x + 1, c->shared_size.y - 1)] = c->y < size_y - 1 ? dev_grid[GLOXY(c->x, c->y + 1)] : 0;
 	}
-	#pragma endregion
+	// */
 	syncthreads();
-	//printf("THREAD: %ux%u\n", blockDim.x, blockDim.y);
+	//printf("THREAD: %ux%u\n", c->shared_size.x, c->shared_size.y);
 }
 
 __device__ __forceinline__ int Grid_D_CountNeighbours(byte * dev_grid, Coordinates * c)
@@ -240,7 +280,9 @@ __global__ void Grid_D_Rule90Step(byte * dev_grid, bool * device_idle, unsigned 
 	Grid_D_DefaultBegin();
 
 	if (c.y == 0) return;
-	byte value = (sha_block[OFF_NW(c)] + sha_block[OFF_NE(c)]) == 1;
+	byte value = (c.x == 0 || c.x == size_x - 1) ? 0 :
+		(sha_block[SHA_NW(c)] + sha_block[SHA_NE(c)]) == 1;
+	//byte value = sha_block[SHA_NE(c)];
 	
 	Grid_D_DefaultEnd();
 }

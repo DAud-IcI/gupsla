@@ -244,7 +244,7 @@ void
 ge_add_frame(ge_GIF *gif, uint16_t delay)
 {
 	uint16_t w, h, x, y;
-	uint8_t *tmp;
+	//uint8_t *tmp;
 
 	if (delay)
 		set_delay(gif, delay);
