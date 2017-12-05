@@ -7,66 +7,71 @@
 #include <macros.h>
 #include <grid.h>
 #include <tools.h>
+#include <math.h>
 
-#include "gif.h"
-
-#define MAX_CYCLE 10000
-
-// by sigil (https://stackoverflow.com/a/19717944)
-wchar_t * convertCharArrayToLPCWSTR(const char* charArray)
-{
-	wchar_t* wString = new wchar_t[4096];
-	MultiByteToWideChar(CP_ACP, 0, charArray, -1, wString, 4096);
-	return wString;
-}
-bool fileExists(LPCWSTR path)
-{
-	DWORD attrib = GetFileAttributes(path);
-
-	return (attrib != INVALID_FILE_ATTRIBUTES &&
-		!(attrib & FILE_ATTRIBUTE_DIRECTORY));
+extern "C" {
+#include "gifenc.h"
 }
 
-void task(char * file, int rows, int cols, int delay = 1)
+#define MAX_CYCLE 1000
+
+void task(const char * file, int rows, int cols, const char * kernel_name, byte palette[], int palette_length, int delay, bool last_frame)
 {
-	wchar_t * wfile = convertCharArrayToLPCWSTR(file);
+	PrintKernelSteps();
 
-	GifWriter gif;
-	
-	assert(GifBegin(&gif, file, cols, rows, delay) == true); // validate file creation
-	assert(fileExists(wfile)); // further validate file creation and prevent command injection
+	// create gif file
+	ge_GIF *gif = ge_new_gif(file, cols, rows, palette, (int) ceil(log2(palette_length)), 0);
 
-	Grid* grid = Grid_Create(1, rows, cols);
+	Grid* grid = Grid_Create(1, rows, cols, kernel_name);
 	Grid_Randomize(grid);
 	Grid_Upload(grid);
-	Grid_Print(grid, false);
+	if (rows < 30 && cols < 120) Grid_Print(grid, false);
 
 	int i = 0;
 	for (; i < MAX_CYCLE && !grid->Idle; i++)
 	{
 		Grid_Step(grid, false);
 		Grid_Download(grid);
-		GifWriteFrame(&gif, grid->Cells, grid->Columns, grid->Rows, delay);
+		if (!last_frame)
+		{
+			gif->frame = grid->Cells;
+			ge_add_frame(gif, delay);
+		}
+		//printf("cycle: %d\n", i);
 	}
-	printf("cycles: %d", i);
+	if (last_frame)
+	{
+		gif->frame = grid->Cells;
+		ge_add_frame(gif, delay);
+	}
+	printf("cycles: %d\n", i);
 	// */
 
-	GifEnd(&gif);
+	ge_close_gif(gif);
 
-	printf("DONE");
+	printf("DONE\n");
 }
 
 int main()
 {
 	PrintTest();
 
-	int rows = 40, cols = 40;
+	//int rows = 256, cols = 256, delay = 0;
+	int rows = 256, cols = 80, delay = 0;
 	char * file = "test.gif";
+	//char * kernel_name = "gol";
+	char * kernel_name = "rule90";
+	bool last_frame = false;
+
+	byte palette[] = { 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF };
+	int palette_length = 2;
 
 	system("dir");
-	task(file, rows, cols);
+	task(file, rows, cols, kernel_name, palette, palette_length, delay, last_frame);
 
-	getchar();
+	//printf("\nPress any key to exit...");
+	//getchar();
+	system(file);
 	return 0;
 }
 

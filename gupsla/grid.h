@@ -17,7 +17,7 @@ struct Grid
 	bool * dev_Idle;
 };
 
-Grid * Grid_Create(int tables, int rows, int columns);
+Grid * Grid_Create(int tables, int rows, int columns, const char * kernel_name = "gol");
 void Grid_Destroy(Grid ** grid_ptr);
 
 void Grid_Randomize(Grid * grid);
@@ -31,3 +31,7 @@ void Grid_Step(Grid * grid
 	, bool print = false
 #endif
 );
+
+void AddKernelStep(const char * name, GridKernel kernel);
+void PrintKernelSteps();
+void Grid_SetKernelStep(Grid * grid, const char * name);

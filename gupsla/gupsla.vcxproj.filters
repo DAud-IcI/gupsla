@@ -26,6 +26,7 @@
     <ClInclude Include="cuda_functions.h" />
     <ClInclude Include="macros_cuda.h" />
     <ClInclude Include="tools.h" />
+    <ClInclude Include="grid.cuh" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="Resources\Images\console_gol.bmp">
