@@ -155,7 +155,6 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
     <CudaCompile Include="cuda_ext.cu" />
     <CudaCompile Include="grid.cu" />
     <CudaCompile Include="macros.h" />
-    <CudaCompile Include="main.cu" />
     <CudaCompile Include="tools.cu" />
   </ItemGroup>
   <ItemGroup>

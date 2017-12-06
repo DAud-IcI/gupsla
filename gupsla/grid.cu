@@ -150,7 +150,7 @@ __device__ __forceinline__ void Grid_D_InitCoordinates(byte * dev_grid, unsigned
 	c->shared_idx = SHAXY(threadIdx.x + 1, threadIdx.y + 1);
 }
 
-__device__ __forceinline__ void v(byte * dev_grid, unsigned int size_x, unsigned int size_y, unsigned int size_z, Coordinates * c)
+__device__ __forceinline__ void Grid_D_PrepareDevice(byte * dev_grid, unsigned int size_x, unsigned int size_y, unsigned int size_z, Coordinates * c)
 {
 	extern __shared__ byte sha_block[];
 	sha_block[c->shared_idx] = dev_grid[c->global_idx];
@@ -284,6 +284,18 @@ __global__ void Grid_D_Rule90Step(byte * dev_grid, bool * device_idle, unsigned 
 		(sha_block[SHA_NW(c)] + sha_block[SHA_NE(c)]) == 1;
 	//byte value = sha_block[SHA_NE(c)];
 	
+	Grid_D_DefaultEnd();
+}
+
+__global__ void Grid_D_Rule90Step
+(byte * dev_grid, bool * device_idle, unsigned int size_x, unsigned int size_y, unsigned int size_z)
+{
+	Grid_D_DefaultBegin();
+
+	if (c.y == 0) return;
+	byte value = (c.x == 0 || c.x == size_x - 1) ? 0 :
+		(sha_block[SHA_NW(c)] + sha_block[SHA_NE(c)]) == 1;
+
 	Grid_D_DefaultEnd();
 }
 

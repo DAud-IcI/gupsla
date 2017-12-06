@@ -15,7 +15,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <CudaCompile Include="main.cu" />
     <CudaCompile Include="grid.cu" />
     <CudaCompile Include="macros.h" />
     <CudaCompile Include="tools.cu" />
